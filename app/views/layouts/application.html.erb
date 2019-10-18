@@ -3,13 +3,129 @@
   <head>
     <title>PusherLocations</title>
     <%= csrf_meta_tags %>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-            <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJ-C9U1q6B12yHkEDNleL2KXHATplu5Ko"></script> # add Google Maps script
-    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>
-    <%= javascript_include_tag 'application', 'data-turbolinks-track': 'reload' %>
+    <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+    <%= javascript_include_tag "https://api.tiles.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.js" %>
+    <%= stylesheet_link_tag "https://api.tiles.mapbox.com/mapbox-gl-js/v1.4.1/mapbox-gl.css"%>
+    <%= javascript_include_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
+    <style>
+      body { margin:0; padding:0; }
+      #map { position:absolute; top:0; bottom:0; width:100%; }
+    </style>
+    <%= csrf_meta_tags %>
   </head>
 
   <body>
-    <%= yield %>
+    <script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.4.2/mapbox-gl-geocoder.min.js'></script>
+    <link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.4.2/mapbox-gl-geocoder.css' type='text/css' />
+    <!-- Promise polyfill script required to use Mapbox GL Geocoder in IE 11 -->
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+    <div id='map'></div>
+
+    <script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoid2hva25vd3N3aGVuIiwiYSI6ImNrMXdod2JtbDAxemczY3FvbWM0Y2ppMjUifQ.799dPAWOL1zHbtLmd9_otA';
+      var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [-79.4512, 43.6568],
+      zoom: 13
+      });
+
+      var canvas = map.getCanvasContainer();
+      var geojson = {
+          "type": "FeatureCollection",
+          "features": [{
+          "type": "Feature",
+          "geometry": {
+          "type": "Point",
+          "coordinates": [0, 0]
+          }
+          }]
+      };
+      function onMove(e) {
+        var coords = e.lngLat;
+
+        // Set a UI indicator for dragging.
+        canvas.style.cursor = 'grabbing';
+
+        // Update the Point feature in `geojson` coordinates
+        // and call setData to the source layer `point` on it.
+        geojson.features[0].geometry.coordinates = [coords.lng, coords.lat];
+        map.getSource('point').setData(geojson);
+        }
+
+      function onUp(e) {
+        var coords = e.lngLat;
+
+        // Print the coordinates of where the point had
+        // finished being dragged to on the map.
+        coordinates.style.display = 'block';
+        coordinates.innerHTML = 'Longitude: ' + coords.lng + '<br />Latitude: ' + coords.lat;
+        canvas.style.cursor = '';
+
+        // Unbind mouse/touch events
+        map.off('mousemove', onMove);
+        map.off('touchmove', onMove);
+      }
+  map.on('load', function() {
+
+        // add address control box
+        map.addControl(new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl
+          }));
+
+        // Add a single point to the map
+      map.addSource('point', {
+        "type": "geojson",
+        "data": geojson
+      });
+
+      map.addLayer({
+        "id": "point",
+        "type": "circle",
+        "source": "point",
+        "paint": {
+        "circle-radius": 10,
+        "circle-color": "#3887be"
+        }
+      });
+
+    // When the cursor enters a feature in the point layer, prepare for dragging.
+    map.on('mouseenter', 'point', function() {
+      map.setPaintProperty('point', 'circle-color', '#3bb2d0');
+      canvas.style.cursor = 'move';
+      });
+
+    map.on('mouseleave', 'point', function() {
+      map.setPaintProperty('point', 'circle-color', '#3887be');
+      canvas.style.cursor = '';
+      });
+
+    map.on('mousedown', 'point', function(e) {
+    // Prevent the default map drag behavior.
+    e.preventDefault();
+
+    canvas.style.cursor = 'grab';
+
+    map.on('mousemove', onMove);
+    map.once('mouseup', onUp);
+    });
+
+    map.on('touchstart', 'point', function(e) {
+      if (e.points.length !== 1) return;
+
+      // Prevent the default map drag behavior.
+      e.preventDefault();
+
+      map.on('touchmove', onMove);
+      map.once('touchend', onUp);
+    });
+  });
+
+
+    </script>
+
+
   </body>
 </html>
